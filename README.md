@@ -111,7 +111,7 @@ Contributions are welcome! Feel free to submit a pull request or open an issue t
 
 ## License
 
-This project is licensed under the GNU 3.0 License.
+This project is licensed under the GPL-3.0 License.
 
 ## Contact
 
