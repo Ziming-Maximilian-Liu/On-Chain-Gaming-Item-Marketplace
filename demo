@@ -1,0 +1,140 @@
+// Backend: Mock Express Server for On-Chain Gaming Item Marketplace
+const express = require('express');
+const bodyParser = require('body-parser');
+const app = express();
+const PORT = 3000;
+
+// Middleware
+app.use(bodyParser.json());
+
+// In-memory storage for game items and orders
+const shards = [new Shard(1), new Shard(2), new Shard(3)];
+const itemCategories = ["Characters", "Weapons", "Accessories"];
+
+// API Routes
+app.post('/api/order', (req, res) => {
+  const { userId, itemId, category, orderType } = req.body;
+  if (!userId || !itemId || !category || !orderType) {
+    return res.status(400).json({ error: 'Invalid order data' });
+  }
+
+  const shard = shards[itemCategories.indexOf(category)];
+  if (!shard) {
+    return res.status(400).json({ error: 'Invalid item category' });
+  }
+
+  const order = new GameItemOrder(userId, itemId, orderType);
+  shard.addOrder(order);
+  res.json({ message: 'Order placed successfully', order });
+});
+
+app.get('/api/process-orders', async (req, res) => {
+  await Promise.all(shards.map(shard => shard.processOrders()));
+  res.json({ message: 'All shards have processed their orders in parallel' });
+});
+
+// Start server
+app.listen(PORT, () => {
+  console.log(`Server is running on http://localhost:${PORT}`);
+});
+
+// Frontend: React Application for On-Chain Gaming Item Marketplace
+import React, { useState } from 'react';
+import axios from 'axios';
+
+function App() {
+  const [userId, setUserId] = useState('');
+  const [itemId, setItemId] = useState('');
+  const [category, setCategory] = useState('Characters');
+  const [orderType, setOrderType] = useState('buy');
+  const [message, setMessage] = useState('');
+
+  const handleOrderSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await axios.post('http://localhost:3000/api/order', {
+        userId,
+        itemId,
+        category,
+        orderType,
+      });
+      setMessage(response.data.message);
+    } catch (error) {
+      setMessage('Error placing order: ' + error.response.data.error);
+    }
+  };
+
+  const handleProcessOrders = async () => {
+    try {
+      const response = await axios.get('http://localhost:3000/api/process-orders');
+      setMessage(response.data.message);
+    } catch (error) {
+      setMessage('Error processing orders: ' + error.response.data.error);
+    }
+  };
+
+  return (
+    <div>
+      <h1>On-Chain Gaming Item Marketplace</h1>
+      <form onSubmit={handleOrderSubmit}>
+        <input
+          type="text"
+          placeholder="User ID"
+          value={userId}
+          onChange={(e) => setUserId(e.target.value)}
+        />
+        <input
+          type="text"
+          placeholder="Item ID"
+          value={itemId}
+          onChange={(e) => setItemId(e.target.value)}
+        />
+        <select value={category} onChange={(e) => setCategory(e.target.value)}>
+          <option value="Characters">Characters</option>
+          <option value="Weapons">Weapons</option>
+          <option value="Accessories">Accessories</option>
+        </select>
+        <select value={orderType} onChange={(e) => setOrderType(e.target.value)}>
+          <option value="buy">Buy</option>
+          <option value="sell">Sell</option>
+        </select>
+        <button type="submit">Place Order</button>
+      </form>
+      <button onClick={handleProcessOrders}>Process Orders</button>
+      {message && <p>{message}</p>}
+    </div>
+  );
+}
+
+export default App;
+
+// Shared Classes and Logic
+class GameItemOrder {
+  constructor(userId, itemId, orderType) {
+    this.userId = userId;
+    this.itemId = itemId;
+    this.orderType = orderType; // 'buy' or 'sell'
+  }
+}
+
+class Shard {
+  constructor(shardId) {
+    this.shardId = shardId;
+    this.orders = [];
+  }
+
+  addOrder(order) {
+    this.orders.push(order);
+  }
+
+  async processOrders() {
+    console.log(`Shard ${this.shardId} is processing ${this.orders.length} orders.`);
+    for (const order of this.orders) {
+      await new Promise((resolve) => setTimeout(resolve, Math.random() * 200 + 100)); // Simulate processing time (100-300 ms)
+      console.log(`Shard ${this.shardId} processed order for item ${order.itemId} by user ${order.userId}`);
+    }
+    console.log(`Shard ${this.shardId} completed processing.\n`);
+  }
+}
+
+// Run the full-stack system by starting the backend server and frontend app
